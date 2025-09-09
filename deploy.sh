@@ -8,8 +8,8 @@ echo "=========================================="
 cd /var/www/studup-backend
 echo "📁 Dossier: $(pwd)"
 
-# Étape 2: Donner les permissions temporaires à l'utilisateur courant
-echo "🔧 Correction des permissions temporaires..."
+# Étape 2: Donner les permissions temporaires pour l'installation
+echo "🔧 Configuration des permissions temporaires..."
 sudo chown -R ubuntu:ubuntu /var/www/studup-backend
 sudo chmod -R 755 /var/www/studup-backend
 
@@ -32,20 +32,38 @@ mkdir -p storage/framework/views
 mkdir -p storage/framework/cache
 mkdir -p storage/logs
 mkdir -p bootstrap/cache
-mkdir -p vendor  # ← AJOUT IMPORTANT
+mkdir -p vendor
 echo "✅ Structure des dossiers créée"
 
-# Étape 5: Installation des dépendances COMPOSER D'ABORD
+# Étape 5: Installation des dépendances Composer (avec permissions utilisateur)
 echo "📦 INSTALLATION DES DÉPENDANCES COMPOSER"
 composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
 echo "✅ Dépendances Composer installées"
 
-# Étape 6: MAINTENANT configuration des permissions Apache
+# Étape 6: Configuration des permissions POUR APACHE
 echo "🔐 CONFIGURATION DES PERMISSIONS APACHE"
 sudo chown -R www-data:www-data /var/www/studup-backend
 sudo chmod -R 755 /var/www/studup-backend
 sudo chmod -R 775 storage bootstrap/cache
-sudo chmod -R 777 storage/framework/cache
+sudo chmod -R 777 storage/framework/cache storage/logs
+
+# Donner les permissions d'écriture à Apache sur les fichiers spécifiques
+sudo touch storage/logs/laravel.log
+sudo chown www-data:www-data storage/logs/laravel.log
+sudo chmod 666 storage/logs/laravel.log
+
+sudo touch bootstrap/cache/config.php
+sudo chown www-data:www-data bootstrap/cache/config.php
+sudo chmod 666 bootstrap/cache/config.php
+
+sudo touch bootstrap/cache/packages.php
+sudo chown www-data:www-data bootstrap/cache/packages.php
+sudo chmod 666 bootstrap/cache/packages.php
+
+sudo touch bootstrap/cache/services.php
+sudo chown www-data:www-data bootstrap/cache/services.php
+sudo chmod 666 bootstrap/cache/services.php
+
 echo "✅ Permissions Apache configurées"
 
 # Étape 7: Configuration de l'application Laravel
@@ -53,7 +71,7 @@ echo "⚙️  CONFIGURATION LARAVEL"
 
 # Génération de la clé API
 if ! grep -q "APP_KEY=base64" .env; then
-    php artisan key:generate --force
+    sudo -u www-data php artisan key:generate --force
     echo "✅ Clé API générée"
 else
     echo "✅ Clé API déjà configurée"
@@ -65,29 +83,29 @@ if ! grep -q "APP_URL=" .env; then
     echo "✅ APP_URL configuré"
 fi
 
-# Étape 8: Nettoyage des caches
+# Étape 8: Nettoyage des caches (en tant qu'Apache)
 echo "🧹 NETTOYAGE DES CACHES"
-php artisan config:clear
-php artisan cache:clear
-php artisan view:clear
-php artisan route:clear
+sudo -u www-data php artisan config:clear || true
+sudo -u www-data php artisan cache:clear || true
+sudo -u www-data php artisan view:clear || true
+sudo -u www-data php artisan route:clear || true
 echo "✅ Caches nettoyés"
 
-# Étape 9: Optimisation production
+# Étape 9: Optimisation production (en tant qu'Apache)
 echo "⚡ OPTIMISATION PRODUCTION"
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+sudo -u www-data php artisan config:cache || true
+sudo -u www-data php artisan route:cache || true
+sudo -u www-data php artisan view:cache || true
 echo "✅ Application optimisée"
 
-# Étape 10: Migrations base de données
+# Étape 10: Migrations base de données (en tant qu'Apache)
 echo "🗄️  MIGRATIONS BASE DE DONNÉES"
-php artisan migrate --force
+sudo -u www-data php artisan migrate --force
 echo "✅ Migrations exécutées"
 
-# Étape 11: Lien de stockage
+# Étape 11: Lien de stockage (en tant qu'Apache)
 echo "🔗 LIEN DE STOCKAGE"
-php artisan storage:link || true
+sudo -u www-data php artisan storage:link || true
 echo "✅ Lien de stockage créé"
 
 # Étape 12: Vérifications finales
@@ -106,6 +124,14 @@ if [ -d vendor ]; then
     echo "✅ dossier vendor trouvé"
 else
     echo "❌ ERREUR: dossier vendor introuvable !"
+    exit 1
+fi
+
+# Vérifier les permissions des fichiers critiques
+if [ -w storage/logs/laravel.log ] && [ -w bootstrap/cache/config.php ]; then
+    echo "✅ Permissions d'écriture OK"
+else
+    echo "❌ ERREUR: Problème de permissions sur les fichiers"
     exit 1
 fi
 
