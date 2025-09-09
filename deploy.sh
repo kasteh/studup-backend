@@ -3,7 +3,6 @@ set -e
 
 echo "==> 🚀 Démarrage du déploiement Studup Backend"
 
-# Aller dans le dossier de l'application
 cd /var/www/studup-backend
 
 echo "📦 Vérification de l'environnement..."
@@ -80,22 +79,12 @@ php artisan storage:link || true
 
 echo "✅ Vérifications finales..."
 
-# Vérifier que l'application fonctionne
-if sudo -u www-data php artisan about > /dev/null 2>&1; then
-    echo "✅ Laravel fonctionne correctement"
-else
-    echo "❌ Erreur avec Laravel, vérifiez les logs"
-fi
-
 # Vérifier que le dossier public existe
 if [ -d public ] && [ -f public/index.php ]; then
     echo "✅ Dossier public et index.php trouvés"
 else
     echo "❌ PROBLEME: public/index.php introuvable !"
-    echo "📋 Contenu du dossier:"
-    ls -la
     exit 1
 fi
 
 echo "==> 🎉 Déploiement terminé avec succès !"
-echo "==> 🌐 Votre application est disponible sur: https://vps-d91fd27c.vps.ovh.net"

@@ -24,40 +24,36 @@ jobs:
             # Aller dans /var/www
             cd /var/www
             
-            # Sauvegarde de l'ancien .env si existant
+            # 1. Gestion des permissions pour pouvoir supprimer
+            echo "🔧 Correction des permissions..."
+            if [ -d studup-backend ]; then
+                sudo chown -R ubuntu:ubuntu studup-backend
+                sudo chmod -R 755 studup-backend
+            fi
+            
+            # 2. Sauvegarde de l'ancien .env si existant
             if [ -d studup-backend ] && [ -f studup-backend/.env ]; then
                 cp studup-backend/.env /tmp/studup_env_backup
                 echo "📦 Sauvegarde du .env existant"
             fi
             
-            # Supprimer l'ancien dossier et cloner le nouveau
-            rm -rf studup-backend
+            # 3. Supprimer l'ancien dossier
+            echo "🗑️  Suppression de l'ancienne version..."
+            sudo rm -rf studup-backend
+            
+            # 4. Cloner le nouveau code
+            echo "📦 Clonage du nouveau code..."
             git clone https://github.com/kasteh/studup-backend.git
             cd studup-backend
             
-            # Restaurer le .env sauvegardé
+            # 5. Restaurer le .env sauvegardé
             if [ -f /tmp/studup_env_backup ]; then
                 cp /tmp/studup_env_backup .env
                 echo "✅ .env restauré"
                 rm /tmp/studup_env_backup
             fi
             
-            # Donner les permissions d'exécution
-            chmod +x deploy.sh
-            
-            # Exécuter le script de déploiement
-            ./deploy.sh
-            
-            # Redémarrer Apache pour appliquer les changements
-            sudo systemctl restart apache2
-            echo "🔄 Apache redémarré"
-            
-            # Vérification finale
-            echo "📋 Vérification de l'application..."
-            if curl -s -o /dev/null -w "%{http_code}" http://localhost | grep -q "200"; then
-                echo "🎉 L'application fonctionne correctement !"
-            else
-                echo "⚠️  Vérifiez les logs Apache: sudo tail -f /var/log/apache2/error.log"
-            fi
-            
-            echo "✅ Déploiement terminé ! Accédez à: https://vps-d91fd27c.vps.ovh.net"
+            # 6. Vérifier que deploy.sh existe, sinon le créer
+            if [ ! -f deploy.sh ]; then
+                echo "📝 Création du script deploy.sh..."
+                cat > deploy.sh << 'EOF'
