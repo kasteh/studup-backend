@@ -66,13 +66,8 @@ jobs:
                 sudo sed -i "s/APP_KEY=.*/APP_KEY=$NEW_KEY/" .env
                 echo "✅ Clé APP_KEY générée"
             fi
-            
-            # Installation Composer
-            echo "📦 Installation Composer..."
-            composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev --no-scripts
-            echo "✅ Dépendances installées"
-            
-            # Structure des dossiers
+
+            # Structure des dossiers (avant composer)
             echo "📁 Création des dossiers..."
             sudo mkdir -p storage/app/public
             sudo mkdir -p storage/framework/sessions
@@ -82,24 +77,24 @@ jobs:
             sudo mkdir -p bootstrap/cache
             echo "✅ Dossiers créés"
             
-            # 🔥 PERMISSIONS CRITIQUES POUR ÉVITER ERREUR 500
+            # 🔥 Permissions critiques
             echo "🔐 Configuration des permissions APACHE..."
             sudo chown -R www-data:www-data /var/www/studup-backend
             sudo chmod -R 755 /var/www/studup-backend
             sudo chmod -R 775 storage bootstrap/cache
             sudo chmod -R 777 storage/framework/cache storage/logs
+            sudo chmod -R 775 bootstrap/cache
             
             # Création des fichiers essentiels
             sudo touch storage/logs/laravel.log
             sudo chown www-data:www-data storage/logs/laravel.log
             sudo chmod 666 storage/logs/laravel.log
-            
-            # Fichiers de cache vides mais valides
-            sudo -u www-data bash -c 'echo "<?php return [];" > bootstrap/cache/config.php'
-            sudo -u www-data bash -c 'echo "<?php return [];" > bootstrap/cache/packages.php'
-            sudo -u www-data bash -c 'echo "<?php return [];" > bootstrap/cache/services.php'
-            sudo chmod 666 bootstrap/cache/*.php
             echo "✅ Permissions configurées"
+            
+            # Installation Composer
+            echo "📦 Installation Composer..."
+            composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+            echo "✅ Dépendances installées"
             
             # Restauration uploads
             echo "📁 Restauration des fichiers uploadés..."
@@ -118,10 +113,13 @@ jobs:
             sudo chown -h www-data:www-data public/storage 2>/dev/null || true
             echo "✅ Lien de stockage créé"
             
-            # 🔥 RÉPARATION SPÉCIFIQUE ERREUR 500
+            # 🔥 Réparation spécifique erreur 500
             echo "🔧 Réparation spécifique erreur 500..."
+            sudo -u www-data php artisan config:clear
+            sudo -u www-data php artisan cache:clear
+            sudo -u www-data php artisan route:clear
+            sudo -u www-data php artisan view:clear
             composer dump-autoload --optimize
-            sudo rm -f bootstrap/cache/*.php 2>/dev/null || true
             
             # Test Laravel
             echo "🔍 Test de fonctionnement Laravel..."
@@ -142,7 +140,7 @@ jobs:
             echo "🔄 Redémarrage d'Apache..."
             sudo systemctl restart apache2
             
-            # Test final avec plus de patience
+            # Test final
             echo "📋 Test final de l'application..."
             sleep 10
             
