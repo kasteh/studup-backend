@@ -24,4 +24,5 @@ jobs:
 
       - name: Deploy Laravel to VPS
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'bash -s' < deploy.sh
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} '/var/www/studup-backend/deploy.sh'
+
