@@ -1,4 +1,4 @@
-name: Déploiement Studup
+name: Déploiement Automatique Studup
 
 on:
   push:
@@ -19,41 +19,62 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            echo "🚀 Début du déploiement..."
+            echo "🚀 DÉBUT DU DÉPLOIEMENT"
+            echo "=========================================="
             
-            # Aller dans /var/www
+            # Étape 1: Aller dans le dossier /var/www
             cd /var/www
+            echo "📁 Dossier: /var/www"
             
-            # 1. Gestion des permissions pour pouvoir supprimer
-            echo "🔧 Correction des permissions..."
+            # Étape 2: Vérifier et corriger les permissions
+            echo "🔧 Vérification des permissions..."
             if [ -d studup-backend ]; then
+                echo "🗑️  Nettoyage de l'ancienne version..."
                 sudo chown -R ubuntu:ubuntu studup-backend
                 sudo chmod -R 755 studup-backend
+                sudo rm -rf studup-backend
+                echo "✅ Ancien dossier supprimé"
             fi
             
-            # 2. Sauvegarde de l'ancien .env si existant
-            if [ -d studup-backend ] && [ -f studup-backend/.env ]; then
-                cp studup-backend/.env /tmp/studup_env_backup
-                echo "📦 Sauvegarde du .env existant"
+            # Étape 3: Sauvegarde du .env existant
+            if [ -f /tmp/studup_env_backup ]; then
+                sudo rm /tmp/studup_env_backup
             fi
             
-            # 3. Supprimer l'ancien dossier
-            echo "🗑️  Suppression de l'ancienne version..."
-            sudo rm -rf studup-backend
-            
-            # 4. Cloner le nouveau code
-            echo "📦 Clonage du nouveau code..."
+            # Étape 4: Cloner le nouveau code
+            echo "📦 Clonage du dépôt..."
             git clone https://github.com/kasteh/studup-backend.git
             cd studup-backend
+            echo "✅ Dossier cloné: /var/www/studup-backend"
             
-            # 5. Restaurer le .env sauvegardé
-            if [ -f /tmp/studup_env_backup ]; then
-                cp /tmp/studup_env_backup .env
-                echo "✅ .env restauré"
-                rm /tmp/studup_env_backup
+            # Étape 5: Vérifier que deploy.sh existe
+            if [ ! -f deploy.sh ]; then
+                echo "❌ deploy.sh introuvable, création..."
+                sudo curl -o deploy.sh https://gist.githubusercontent.com/assistant/raw/deploy.sh
+                chmod +x deploy.sh
+                echo "✅ deploy.sh téléchargé et rendu exécutable"
             fi
             
-            # 6. Vérifier que deploy.sh existe, sinon le créer
-            if [ ! -f deploy.sh ]; then
-                echo "📝 Création du script deploy.sh..."
-                cat > deploy.sh << 'EOF'
+            # Étape 6: Rendre le script exécutable et l'exécuter
+            chmod +x deploy.sh
+            echo "▶️  Exécution du script de déploiement..."
+            ./deploy.sh
+            
+            # Étape 7: Redémarrage d'Apache
+            echo "🔄 Redémarrage d'Apache..."
+            sudo systemctl restart apache2
+            
+            # Étape 8: Vérification finale
+            echo "📋 Vérification de l'application..."
+            sleep 3
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost)
+            
+            if [ "$HTTP_STATUS" = "200" ]; then
+                echo "🎉 SUCCÈS: Application fonctionnelle (HTTP $HTTP_STATUS)"
+            else
+                echo "⚠️  ATTENTION: HTTP $HTTP_STATUS - Vérifiez: sudo tail -f /var/log/apache2/error.log"
+            fi
+            
+            echo "=========================================="
+            echo "✅ DÉPLOIEMENT TERMINÉ"
+            echo "🌐 URL: https://vps-d91fd27c.vps.ovh.net"
