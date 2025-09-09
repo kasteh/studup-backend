@@ -1,4 +1,4 @@
-name: Déploiement Simple et Fiable
+name: Déploiement Fiable Studup
 
 on:
   push:
@@ -16,28 +16,29 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          command_timeout: 15m
+          command_timeout: 20m
           script: |
             set -e
-            echo "🚀 DÉBUT DU DÉPLOIEMENT ULTRA-SIMPLIFIÉ"
+            echo "🚀 DÉPLOIEMENT ULTRA-FIABLE STUDUP"
             echo "=========================================="
             
             # Étape 1: Aller dans /var/www
             cd /var/www
             echo "📁 Dossier: /var/www"
             
-            # Étape 2: Sauvegarde rapide
+            # Étape 2: Sauvegarde CRITIQUE
             BACKUP_DIR="/tmp/studup-backup-$(date +%s)"
             if [ -d studup-backend ]; then
-                echo "💾 Sauvegarde rapide..."
+                echo "💾 Sauvegarde des données critiques..."
                 mkdir -p "$BACKUP_DIR"
-                cp -r studup-backend/storage/app/public "$BACKUP_DIR/" 2>/dev/null || true
-                cp studup-backend/.env "$BACKUP_DIR/" 2>/dev/null || true
+                # Sauvegarder SEULEMENT les uploads et .env
+                cp -rf studup-backend/storage/app/public "$BACKUP_DIR/" 2>/dev/null || true
+                cp -f studup-backend/.env "$BACKUP_DIR/" 2>/dev/null || true
                 echo "✅ Sauvegarde effectuée"
             fi
             
-            # Étape 3: Nettoyage complet
-            echo "🧹 Nettoyage complet..."
+            # Étape 3: Nettoyage COMPLET avec sudo
+            echo "🧹 Nettoyage complet avec sudo..."
             sudo rm -rf studup-backend
             echo "✅ Ancien dossier supprimé"
             
@@ -47,97 +48,109 @@ jobs:
             cd studup-backend
             echo "✅ Code cloné"
             
-            # Étape 5: Configuration basique
-            echo "🔧 Configuration basique..."
+            # Étape 5: Configuration .env
+            echo "🔧 Configuration de l'environnement..."
             
-            # Restaurer .env ou créer depuis exemple
+            # Restaurer .env ou créer nouveau
             if [ -f "$BACKUP_DIR/.env" ]; then
-                cp "$BACKUP_DIR/.env" .env
+                sudo cp "$BACKUP_DIR/.env" .env
                 echo "✅ .env restauré depuis sauvegarde"
-            elif [ ! -f .env ] && [ -f .env.example ]; then
-                cp .env.example .env
+            elif [ -f .env.example ]; then
+                sudo cp .env.example .env
                 echo "✅ .env créé depuis .env.example"
+            else
+                echo "❌ ERREUR: Aucun fichier .env.example trouvé"
+                exit 1
             fi
             
-            # Vérifier et générer APP_KEY si nécessaire
+            # FORCER la génération de APP_KEY si manquante
             if ! grep -q "APP_KEY=base64:" .env; then
-                echo "🔑 Génération de la clé APP_KEY..."
+                echo "🔑 Génération FORCÉE de la clé APP_KEY..."
                 NEW_KEY=$(php -r "echo 'base64:'.base64_encode(random_bytes(32));")
-                sed -i "s/APP_KEY=.*/APP_KEY=$NEW_KEY/" .env
+                sudo sed -i "s/APP_KEY=.*/APP_KEY=$NEW_KEY/" .env
                 echo "✅ Clé APP_KEY générée"
             fi
             
-            # Étape 6: Installation Composer SANS scripts
-            echo "📦 Installation Composer (sans scripts)..."
+            # Étape 6: Installation Composer
+            echo "📦 Installation Composer..."
             composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev --no-scripts
             echo "✅ Dépendances installées"
             
-            # Étape 7: Structure des dossiers
-            echo "📁 Création des dossiers..."
-            mkdir -p storage/app/public
-            mkdir -p storage/framework/sessions
-            mkdir -p storage/framework/views
-            mkdir -p storage/framework/cache/data
-            mkdir -p storage/logs
-            mkdir -p bootstrap/cache
+            # Étape 7: Structure des dossiers avec sudo
+            echo "📁 Création des dossiers avec permissions..."
+            sudo mkdir -p storage/app/public
+            sudo mkdir -p storage/framework/sessions
+            sudo mkdir -p storage/framework/views
+            sudo mkdir -p storage/framework/cache/data
+            sudo mkdir -p storage/logs
+            sudo mkdir -p bootstrap/cache
             echo "✅ Dossiers créés"
             
-            # Étape 8: Permissions Apache
-            echo "🔐 Configuration des permissions..."
+            # Étape 8: PERMISSIONS CRITIQUES
+            echo "🔐 Configuration des permissions APACHE..."
             sudo chown -R www-data:www-data /var/www/studup-backend
             sudo chmod -R 755 /var/www/studup-backend
             sudo chmod -R 775 storage bootstrap/cache
             sudo chmod -R 777 storage/framework/cache storage/logs
             
-            # Créer les fichiers essentiels
-            sudo -u www-data touch storage/logs/laravel.log
-            sudo -u www-data touch bootstrap/cache/config.php
+            # Créer les fichiers essentiels avec sudo
+            sudo touch storage/logs/laravel.log
+            sudo touch bootstrap/cache/config.php
             sudo chmod 666 storage/logs/laravel.log bootstrap/cache/config.php
             echo "✅ Permissions configurées"
             
-            # Étape 9: Restauration des uploads
+            # Étape 9: Restauration des uploads avec sudo
             echo "📁 Restauration des fichiers uploadés..."
             if [ -d "$BACKUP_DIR/public" ]; then
-                cp -r "$BACKUP_DIR/public"/* storage/app/public/ 2>/dev/null || true
+                sudo cp -rf "$BACKUP_DIR/public"/* storage/app/public/ 2>/dev/null || true
+                sudo chown -R www-data:www-data storage/app/public
                 echo "✅ Fichiers uploadés restaurés"
             fi
             
-            # Étape 10: Lien de stockage
-            echo "🔗 Création du lien de stockage..."
+            # Étape 10: LIEN DE STOCKAGE AVEC SUDO
+            echo "🔗 Création du lien de stockage avec sudo..."
             if [ -L "public/storage" ]; then
-                rm public/storage
+                sudo rm -f public/storage
             fi
-            ln -sf ../storage/app/public public/storage
+            sudo ln -sf ../storage/app/public public/storage
+            sudo chown -h www-data:www-data public/storage 2>/dev/null || true
             echo "✅ Lien de stockage créé"
             
-            # Étape 11: Test Laravel basique
-            echo "🔍 Test de fonctionnement Laravel..."
-            if php -r "require 'vendor/autoload.php'; echo '✅ Autoloader fonctionnel';"; then
+            # Étape 11: Test basique de Laravel
+            echo "🔍 Test basique de Laravel..."
+            if php -r "require 'vendor/autoload.php'; echo '✅ Autoloader OK';" 2>/dev/null; then
                 echo "✅ Laravel peut charger l'autoloader"
             else
-                echo "❌ ERREUR: Problème avec l'autoloader"
-                echo "📋 Tentative de réparation..."
-                composer dump-autoload
+                echo "⚠️  Problème avec l'autoloader, tentative de réparation..."
+                composer dump-autoload --optimize
             fi
             
             # Étape 12: Nettoyage
             echo "🧹 Nettoyage final..."
-            rm -rf "$BACKUP_DIR"
+            sudo rm -rf "$BACKUP_DIR" 2>/dev/null || true
             
             # Étape 13: Redémarrage Apache
             echo "🔄 Redémarrage d'Apache..."
             sudo systemctl restart apache2
             
-            # Étape 14: Test final
+            # Étape 14: Test final avec timeout
             echo "📋 Test final de l'application..."
-            sleep 3
-            if curl -s -f http://localhost >/dev/null 2>&1; then
-                echo "🎉 DÉPLOIEMENT RÉUSSI !"
-                echo "🌐 Application accessible sur: https://vps-d91fd27c.vps.ovh.net"
-            else
-                echo "⚠️  L'application ne répond pas immédiatement"
-                echo "💡 Elle peut mettre quelques minutes à se initialiser"
-                echo "📋 Vérifiez avec: sudo tail -f /var/log/apache2/error.log"
-            fi
+            sleep 5
+            
+            # Test avec plusieurs tentatives
+            for i in {1..3}; do
+                if curl -s -f --connect-timeout 10 http://localhost >/dev/null 2>&1; then
+                    echo "🎉 DÉPLOIEMENT RÉUSSI !"
+                    echo "🌐 Application accessible sur: https://vps-d91fd27c.vps.ovh.net"
+                    exit 0
+                fi
+                echo "⏳ Tentative $i/3 - Attente supplémentaire..."
+                sleep 5
+            done
+            
+            echo "⚠️  L'application ne répond pas immédiatement"
+            echo "💡 Cela peut prendre quelques minutes"
+            echo "📋 Vérifiez avec: sudo tail -f /var/log/apache2/error.log"
+            echo "✅ DÉPLOIEMENT TERMINÉ - Vérifiez manuellement si nécessaire"
             
             echo "=========================================="
