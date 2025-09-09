@@ -104,7 +104,9 @@ jobs:
             sudo mkdir -p storage/api-docs
             sudo chown -R www-data:www-data storage/api-docs
             sudo chmod -R 775 storage/api-docs
+            php artisan vendor:publish --provider "L5Swagger\L5SwaggerServiceProvider"
             sudo -u www-data php artisan l5-swagger:generate
+            php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
             echo "✅ Documentation Swagger générée"
             
             # Restauration uploads
