@@ -4,71 +4,160 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch: # Permet déclenchement manuel
+
+env:
+  APP_URL: https://vps-d91fd27c.vps.ovh.net
 
 jobs:
-  deploy:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout du code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-suggest
+
+      - name: Run tests
+        run: vendor/bin/phpunit
+
+  deploy:
+    needs: tests
+    runs-on: ubuntu-latest
+    environment: production # Protection supplémentaire
+    
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Vérification des secrets
+        run: |
+          if [ -z "${{ secrets.SSH_HOST }}" ] || [ -z "${{ secrets.SSH_USER }}" ] || [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ Secrets SSH manquants"
+            exit 1
+          fi
 
       - name: Déploiement sur le serveur
-        uses: appleboy/ssh-action@v0.1.7
+        uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 10m
           script: |
-            echo "🚀 DÉBUT DU DÉPLOIEMENT"
+            set -e  # Arrêt immédiat en cas d'erreur
+            
+            echo "🚀 DÉBUT DU DÉPLOIEMENT - $(date)"
             echo "=========================================="
             
-            # Étape 1: Aller dans /var/www
-            cd /var/www
-            echo "📁 Dossier: /var/www"
+            # Variables
+            APP_DIR="/var/www/studup-backend"
+            BACKUP_DIR="/var/backups/studup-$(date +%Y%m%d_%H%M%S)"
             
-            # Étape 2: Vérifier et corriger les permissions pour suppression
-            echo "🔧 Vérification des permissions..."
-            if [ -d studup-backend ]; then
-                echo "🗑️  Nettoyage de l'ancienne version..."
-                sudo chown -R ubuntu:ubuntu studup-backend
-                sudo chmod -R 755 studup-backend
-                sudo rm -rf studup-backend
-                echo "✅ Ancien dossier supprimé"
+            # Backup de l'ancienne version
+            if [ -d "$APP_DIR" ]; then
+                echo "💾 Backup de l'ancienne version..."
+                sudo mkdir -p /var/backups
+                sudo cp -r "$APP_DIR" "$BACKUP_DIR"
+                echo "✅ Backup créé: $BACKUP_DIR"
             fi
             
-            # Étape 3: Cloner le nouveau code
-            echo "📦 Clonage du dépôt..."
-            git clone https://github.com/kasteh/studup-backend.git
-            cd studup-backend
-            echo "✅ Dossier cloné: /var/www/studup-backend"
+            # Préparation du déploiement
+            cd /var/www
             
-            # Étape 4: Vérifier que deploy.sh existe et est à jour
+            if [ -d studup-backend ]; then
+                echo "🔄 Mise à jour du code existant..."
+                cd studup-backend
+                git fetch origin main
+                git reset --hard origin/main
+            else
+                echo "📦 Premier clonage..."
+                git clone https://github.com/kasteh/studup-backend.git
+                cd studup-backend
+            fi
+            
+            # Vérifier que deploy.sh existe
             if [ ! -f deploy.sh ]; then
                 echo "❌ deploy.sh introuvable, arrêt du déploiement"
                 exit 1
             fi
             
-            # Étape 5: Rendre le script exécutable et l'exécuter
+            # Exécution du script de déploiement
             chmod +x deploy.sh
             echo "▶️  Exécution du script de déploiement..."
-            ./deploy.sh
             
-            # Étape 6: Redémarrage d'Apache
-            echo "🔄 Redémarrage d'Apache..."
+            if ! ./deploy.sh; then
+                echo "❌ Échec du script de déploiement"
+                if [ -d "$BACKUP_DIR" ]; then
+                    echo "🔄 Restauration du backup..."
+                    sudo rm -rf "$APP_DIR"
+                    sudo cp -r "$BACKUP_DIR" "$APP_DIR"
+                    sudo systemctl restart apache2
+                    echo "✅ Rollback effectué"
+                fi
+                exit 1
+            fi
+            
+            # Redémarrage des services
+            echo "🔄 Redémarrage des services..."
             sudo systemctl restart apache2
+            sudo systemctl restart php8.2-fpm 2>/dev/null || true
             
-            # Étape 7: Vérification finale
-            echo "📋 Vérification de l'application..."
-            sleep 5
+            # Vérifications de santé
+            echo "📋 Vérifications de santé..."
+            sleep 10
+            
+            # Test HTTP local
             HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost)
             
             if [ "$HTTP_STATUS" = "200" ]; then
                 echo "🎉 SUCCÈS: Application fonctionnelle (HTTP $HTTP_STATUS)"
+                
+                # Test HTTPS externe
+                if curl -s -f "${{ env.APP_URL }}" >/dev/null 2>&1; then
+                    echo "🌐 HTTPS externe fonctionnel"
+                else
+                    echo "⚠️  HTTPS externe inaccessible"
+                fi
+                
+                # Nettoyage des anciens backups (garder 5 derniers)
+                sudo find /var/backups -name "studup-*" -type d | sort -r | tail -n +6 | sudo xargs rm -rf
+                
             else
-                echo "⚠️  ATTENTION: HTTP $HTTP_STATUS"
-                echo "📋 Logs Apache: sudo tail -n 20 /var/log/apache2/error.log"
+                echo "❌ ÉCHEC: HTTP $HTTP_STATUS"
+                echo "📋 Logs Apache récents:"
+                sudo tail -n 20 /var/log/apache2/error.log
+                
+                # Rollback automatique
+                if [ -d "$BACKUP_DIR" ]; then
+                    echo "🔄 Rollback automatique..."
+                    sudo rm -rf "$APP_DIR"
+                    sudo cp -r "$BACKUP_DIR" "$APP_DIR"
+                    sudo systemctl restart apache2
+                    echo "✅ Rollback effectué"
+                fi
+                exit 1
             fi
             
             echo "=========================================="
-            echo "✅ DÉPLOIEMENT TERMINÉ"
-            echo "🌐 URL: https://vps-d91fd27c.vps.ovh.net"
+            echo "✅ DÉPLOIEMENT TERMINÉ AVEC SUCCÈS - $(date)"
+            echo "🌐 URL: ${{ env.APP_URL }}"
+
+      - name: Notification de succès
+        if: success()
+        run: |
+          echo "🎉 Déploiement réussi sur ${{ env.APP_URL }}"
+          # Ajouter ici vos notifications Slack/Discord si nécessaire
+
+      - name: Notification d'échec
+        if: failure()
+        run: |
+          echo "❌ Échec du déploiement - vérifiez les logs"
+          # Ajouter ici vos notifications d'erreur
