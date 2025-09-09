@@ -4,60 +4,72 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use App\Models\User;
 
 class AuthController extends Controller
 {
     /**
-     * Register a new user
+     * @OA\Post(
+     *     path="/api/register",
+     *     summary="Register a new user",
+     *     tags={"Auth"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"prenom","nom","emailUniversitaire","motdepasse","Terms"},
+     *             @OA\Property(property="UserType", type="string", example="student"),
+     *             @OA\Property(property="prenom", type="string", example="John"),
+     *             @OA\Property(property="nom", type="string", example="Doe"),
+     *             @OA\Property(property="emailUniversitaire", type="string", example="john.doe@univ.com"),
+     *             @OA\Property(property="motdepasse", type="string", format="password", example="secret123"),
+     *             @OA\Property(property="Terms", type="boolean", example=true)
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Utilisateur créé"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
      */
     public function register(Request $request)
     {
-        $request->validate([
-            'userType' => 'required|in:student,organism,admin',
-            'prenom' => 'required|string|max:255',
-            'nom' => 'required|string|max:255',
-            'nationalite' => 'nullable|string|max:255',
-            'birthDate' => 'required|date_format:d-m-Y',
-            'genre' => 'nullable|in:male,female,other',
-            'adresse' => 'nullable|string|max:255',
-            'codePostale' => 'nullable|string|max:20',
-            'pays' => 'nullable|string|max:255',
-            'numeroTelephone' => 'nullable|string|max:20',
+        $data = $request->validate([
+            'UserType' => 'required|string',
+            'prenom' => 'required|string',
+            'nom' => 'required|string',
             'emailUniversitaire' => 'required|email|unique:users,emailUniversitaire',
-            'motdepasse' => 'required|string|min:6|confirmed',
-            'terms' => 'accepted',
+            'motdepasse' => 'required|string|min:6',
+            'Terms' => 'required|boolean',
         ]);
 
         $user = User::create([
-            'userType' => $request->userType,
-            'prenom' => $request->prenom,
-            'nom' => $request->nom,
-            'nationalite' => $request->nationalite,
-            'birthDate' => $request->birthDate,
-            'genre' => $request->genre,
-            'adresse' => $request->adresse,
-            'codePostale' => $request->codePostale,
-            'pays' => $request->pays,
-            'numeroTelephone' => $request->numeroTelephone,
-            'emailUniversitaire' => $request->emailUniversitaire,
-            'motdepasse' => Hash::make($request->motdepasse),
-            'terms' => $request->terms,
+            'UserType' => $data['UserType'],
+            'prenom' => $data['prenom'],
+            'nom' => $data['nom'],
+            'emailUniversitaire' => $data['emailUniversitaire'],
+            'motdepasse' => Hash::make($data['motdepasse']),
+            'Terms' => $data['Terms'],
         ]);
 
-        // Crée un token pour l'utilisateur
-        $token = $user->createToken('api-token')->plainTextToken;
-
-        return response()->json([
-            'user' => $user,
-            'token' => $token,
-        ], 201);
+        return response()->json($user, 201);
     }
 
     /**
-     * Login user
+     * @OA\Post(
+     *     path="/api/login",
+     *     summary="Login user",
+     *     tags={"Auth"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"emailUniversitaire","motdepasse"},
+     *             @OA\Property(property="emailUniversitaire", type="string", example="john.doe@univ.com"),
+     *             @OA\Property(property="motdepasse", type="string", format="password", example="secret123")
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Connexion réussie"),
+     *     @OA\Response(response=401, description="Non autorisé")
+     * )
      */
     public function login(Request $request)
     {
@@ -70,31 +82,12 @@ class AuthController extends Controller
 
         if (! $user || ! Hash::check($request->motdepasse, $user->motdepasse)) {
             throw ValidationException::withMessages([
-                'emailUniversitaire' => ['Les identifiants sont incorrects.'],
+                'emailUniversitaire' => ['Les informations d\'identification sont incorrectes.'],
             ]);
         }
 
-        // Supprime les anciens tokens
-        $user->tokens()->delete();
-
-        // Crée un nouveau token
         $token = $user->createToken('api-token')->plainTextToken;
 
-        return response()->json([
-            'user' => $user,
-            'token' => $token,
-        ], 200);
-    }
-
-    /**
-     * Logout user (revoke current token)
-     */
-    public function logout(Request $request)
-    {
-        $request->user()->currentAccessToken()->delete();
-
-        return response()->json([
-            'message' => 'Déconnexion réussie'
-        ]);
+        return response()->json(['token' => $token], 200);
     }
 }
