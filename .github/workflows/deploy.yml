@@ -90,10 +90,10 @@ jobs:
             sudo chown www-data:www-data storage/logs/laravel.log
             sudo chmod 666 storage/logs/laravel.log
             echo "✅ Permissions configurées"
-            
-            # Installation Composer
+
+            # Installation Composer (en www-data)
             echo "📦 Installation Composer..."
-            composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+            sudo -u www-data composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
             echo "✅ Dépendances installées"
             
             # Restauration uploads
