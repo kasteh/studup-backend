@@ -16,35 +16,36 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          command_timeout: 30m
+          command_timeout: 20m
           script: |
             set -e
-            echo "🚀 Déploiement Studup - Début"
+            echo "🚀 DÉPLOIEMENT AVEC CORRECTION ERREUR 500"
             echo "=========================================="
-
+            
             cd /var/www
-
+            echo "📁 Dossier: /var/www"
+            
             # Sauvegarde
             BACKUP_DIR="/tmp/studup-backup-$(date +%s)"
             if [ -d studup-backend ]; then
-                echo "💾 Sauvegarde en cours..."
+                echo "💾 Sauvegarde des données critiques..."
                 mkdir -p "$BACKUP_DIR"
                 cp -rf studup-backend/storage/app/public "$BACKUP_DIR/" 2>/dev/null || true
                 cp -f studup-backend/.env "$BACKUP_DIR/" 2>/dev/null || true
                 echo "✅ Sauvegarde effectuée"
             fi
-
+            
             # Nettoyage
-            echo "🧹 Nettoyage du dossier existant..."
+            echo "🧹 Nettoyage complet..."
             sudo rm -rf studup-backend
             echo "✅ Ancien dossier supprimé"
-
+            
             # Clonage
-            echo "📦 Clonage du dépôt..."
+            echo "📦 Clonage du nouveau code..."
             git clone https://github.com/kasteh/studup-backend.git
             cd studup-backend
             echo "✅ Code cloné"
-
+            
             # Configuration .env
             echo "🔧 Configuration de l'environnement..."
             if [ -f "$BACKUP_DIR/.env" ]; then
@@ -54,10 +55,10 @@ jobs:
                 sudo cp .env.example .env
                 echo "✅ .env créé depuis .env.example"
             else
-                echo "❌ ERREUR: Aucun fichier .env trouvé"
+                echo "❌ ERREUR: Aucun fichier .env.example trouvé"
                 exit 1
             fi
-
+            
             # Clé APP_KEY
             if ! grep -q "APP_KEY=base64:" .env; then
                 echo "🔑 Génération de la clé APP_KEY..."
@@ -66,18 +67,61 @@ jobs:
                 echo "✅ Clé APP_KEY générée"
             fi
 
-            # Création des dossiers nécessaires
+            # Structure des dossiers (avant composer)
             echo "📁 Création des dossiers..."
-            sudo mkdir -p storage/app/public storage/framework/sessions storage/framework/views storage/framework/cache/data storage/logs bootstrap/cache storage/api-docs database/migrations
-            sudo chown -R www-data:www-data storage bootstrap/cache database/migrations
-            sudo chmod -R 775 storage bootstrap/cache database/migrations storage/api-docs
-            echo "✅ Dossiers créés et permissions appliquées"
+            sudo mkdir -p storage/app/public
+            sudo mkdir -p storage/framework/sessions
+            sudo mkdir -p storage/framework/views
+            sudo mkdir -p storage/framework/cache/data
+            sudo mkdir -p storage/logs
+            sudo mkdir -p bootstrap/cache
+            echo "✅ Dossiers créés"
+            
+            # 🔥 Permissions critiques
+            echo "🔐 Configuration des permissions APACHE..."
+            sudo chown -R www-data:www-data /var/www/studup-backend
+            sudo chmod -R 755 /var/www/studup-backend
+            sudo chmod -R 775 storage bootstrap/cache
+            sudo chmod -R 777 storage/framework/cache storage/logs
+            sudo chmod -R 775 bootstrap/cache
+            
+            # Création des fichiers essentiels
+            sudo touch storage/logs/laravel.log
+            sudo chown www-data:www-data storage/logs/laravel.log
+            sudo chmod 666 storage/logs/laravel.log
+            echo "✅ Permissions configurées"
 
-            # Installation des dépendances Composer
+            # 📦 Préparer le cache de Composer (pour éviter le warning)
+            sudo mkdir -p /var/www/.cache/composer
+            sudo chown -R www-data:www-data /var/www/.cache
+
+            # Installation Composer (en www-data)
             echo "📦 Installation Composer..."
             sudo -u www-data composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
             echo "✅ Dépendances installées"
 
+            # 🔹 Génération Swagger et publication Sanctum
+            echo "📚 Publication Swagger et Sanctum..."
+            sudo mkdir -p storage/api-docs
+            sudo chown -R www-data:www-data storage/api-docs
+            sudo chmod -R 775 storage/api-docs
+
+            # Publier L5 Swagger
+            sudo -u www-data php artisan vendor:publish --provider="L5Swagger\L5SwaggerServiceProvider" --force
+            # Générer documentation Swagger
+            sudo -u www-data php artisan l5-swagger:generate
+            # Publier Sanctum
+            sudo -u www-data php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider" --force
+            echo "✅ Documentation Swagger et publication Sanctum terminées"
+            
+            # Restauration uploads
+            echo "📁 Restauration des fichiers uploadés..."
+            if [ -d "$BACKUP_DIR/public" ]; then
+                sudo cp -rf "$BACKUP_DIR/public"/* storage/app/public/ 2>/dev/null || true
+                sudo chown -R www-data:www-data storage/app/public
+                echo "✅ Fichiers uploadés restaurés"
+            fi
+            
             # Lien de stockage
             echo "🔗 Création du lien de stockage..."
             if [ -L "public/storage" ]; then
@@ -86,52 +130,51 @@ jobs:
             sudo ln -sf ../storage/app/public public/storage
             sudo chown -h www-data:www-data public/storage 2>/dev/null || true
             echo "✅ Lien de stockage créé"
-
-            # Publier et générer Swagger
-            echo "📄 Publication L5 Swagger..."
-            sudo -u www-data php artisan vendor:publish --provider="L5Swagger\L5SwaggerServiceProvider" --force
-            sudo -u www-data php artisan l5-swagger:generate
-            echo "✅ Documentation Swagger générée"
-
-            # Publier Sanctum
-            echo "🔐 Publication Sanctum..."
-            sudo -u www-data php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider" --force
-            echo "✅ Sanctum publié"
-
-            # Réparation spécifique erreur 500 et cache
-            echo "🔧 Nettoyage cache et configuration..."
+            
+            # 🔥 Réparation spécifique erreur 500
+            echo "🔧 Réparation spécifique erreur 500..."
             sudo -u www-data php artisan config:clear
             sudo -u www-data php artisan cache:clear
             sudo -u www-data php artisan route:clear
             sudo -u www-data php artisan view:clear
             sudo -u www-data composer dump-autoload --optimize
-            echo "✅ Cache et autoload OK"
-
-            # Restauration fichiers uploadés
-            echo "📁 Restauration fichiers uploadés..."
-            if [ -d "$BACKUP_DIR/public" ]; then
-                sudo cp -rf "$BACKUP_DIR/public"/* storage/app/public/ 2>/dev/null || true
-                sudo chown -R www-data:www-data storage/app/public
-                echo "✅ Uploads restaurés"
+            
+            # Test Laravel
+            echo "🔍 Test de fonctionnement Laravel..."
+            if php -r "require 'vendor/autoload.php'; echo '✅ Autoloader OK';" 2>/dev/null; then
+                echo "✅ Laravel peut charger l'autoloader"
+            else
+                echo "❌ ERREUR: Problème avec l'autoloader"
+                echo "📋 Tentative de réparation..."
+                sudo -u www-data composer dump-autoload
+                echo "✅ Autoloader réparé"
             fi
-
+            
+            # Nettoyage
+            echo "🧹 Nettoyage final..."
+            sudo rm -rf "$BACKUP_DIR" 2>/dev/null || true
+            
             # Redémarrage Apache
-            echo "🔄 Redémarrage Apache..."
+            echo "🔄 Redémarrage d'Apache..."
             sudo systemctl restart apache2
-
+            
             # Test final
-            echo "📋 Test de l'application..."
+            echo "📋 Test final de l'application..."
             sleep 10
+            
             for i in {1..5}; do
                 if curl -s -f --connect-timeout 20 http://localhost >/dev/null 2>&1; then
-                    echo "🎉 Déploiement réussi !"
+                    echo "🎉 DÉPLOIEMENT RÉUSSI !"
                     echo "🌐 Application accessible sur: https://vps-d91fd27c.vps.ovh.net"
                     exit 0
                 fi
-                echo "⏳ Tentative $i/5 - attente supplémentaire..."
+                echo "⏳ Tentative $i/5 - Attente supplémentaire..."
                 sleep 5
             done
-
-            echo "⚠️ L'application peut avoir des problèmes de configuration. Vérifiez les logs."
-            echo "💡 sudo tail -f /var/www/studup-backend/storage/logs/laravel.log"
+            
+            echo "⚠️  L'application peut avoir des problèmes de configuration"
+            echo "💡 Vérifiez: sudo tail -f /var/www/studup-backend/storage/logs/laravel.log"
+            echo "💡 Vérifiez la base de données dans le .env"
+            echo "✅ DÉPLOIEMENT TERMINÉ - Vérification manuelle recommandée"
+            
             echo "=========================================="
