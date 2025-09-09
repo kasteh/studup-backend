@@ -11,10 +11,10 @@ ENV_BACKUP="/tmp/studup-env-backup"
 
 # Étape 0: SAUVEGARDE DES DONNÉES IMPORTANTES
 echo "💾 SAUVEGARDE DES DONNÉES CRITIQUES"
-if [ -d "$APP_DIR/storage" ]; then
-    echo "📁 Sauvegarde du dossier storage..."
-    cp -r "$APP_DIR/storage" "$STORAGE_BACKUP"
-    echo "✅ Storage sauvegardé"
+if [ -d "$APP_DIR/storage/app/public" ]; then
+    echo "📁 Sauvegarde des uploads..."
+    cp -r "$APP_DIR/storage/app/public" "$STORAGE_BACKUP" 2>/dev/null || true
+    echo "✅ Uploads sauvegardés"
 fi
 
 if [ -f "$APP_DIR/.env" ]; then
@@ -27,223 +27,213 @@ fi
 cd "$APP_DIR"
 echo "📁 Dossier: $(pwd)"
 
-# Étape 2: Donner les permissions temporaires pour l'installation
+# Étape 2: Configuration des permissions temporaires
 echo "🔧 Configuration des permissions temporaires..."
 sudo chown -R ubuntu:ubuntu "$APP_DIR"
 sudo chmod -R 755 "$APP_DIR"
 
-# Étape 3: NETTOYAGE INTELLIGENT DES CACHES
-echo "🧹 NETTOYAGE INTELLIGENT DES CACHES"
-# Nettoyer seulement les caches, pas les uploads
-find bootstrap/cache -name "*.php" -type f -delete 2>/dev/null || true
-find storage/framework/cache -name "*.php" -type f -delete 2>/dev/null || true
-find storage/framework/views -name "*.php" -type f -delete 2>/dev/null || true
-find storage/framework/sessions -name "*" -type f -not -name ".gitignore" -delete 2>/dev/null || true
-echo "✅ Caches corrompus supprimés (uploads préservés)"
+# Étape 3: NETTOYAGE RADICAL ET SÉCURISÉ
+echo "🧹 NETTOYAGE RADICAL DES CACHES"
+# Supprimer TOUS les fichiers de cache corrompus
+rm -rf bootstrap/cache/*
+rm -rf storage/framework/cache/data/*
+rm -rf storage/framework/views/*
+rm -rf storage/framework/sessions/*
+rm -rf storage/logs/laravel.log
+echo "✅ Tous les caches supprimés"
 
 # Étape 4: RESTAURATION DES DONNÉES CRITIQUES
 echo "🔄 RESTAURATION DES DONNÉES"
+# Restaurer le .env en priorité
 if [ -f "$ENV_BACKUP" ]; then
     cp "$ENV_BACKUP" .env
     echo "✅ .env restauré"
-elif [ ! -f .env ]; then
-    echo "📄 Création du fichier .env..."
+elif [ ! -f .env ] && [ -f .env.example ]; then
+    echo "📄 Création du fichier .env depuis .env.example..."
     cp .env.example .env
-    echo "✅ .env créé à partir de .env.example"
-    echo "⚠️  IMPORTANT: Configurez les variables dans .env !"
+    # Générer une clé APP_KEY immédiatement
+    KEY=$(php -r "echo 'base64:'.base64_encode(random_bytes(32));")
+    sed -i "s|APP_KEY=|APP_KEY=$KEY|" .env
+    echo "✅ .env créé avec nouvelle clé"
+else
+    echo "❌ ERREUR: Impossible de configurer .env"
+    exit 1
 fi
 
-# Restaurer les uploads si ils existaient
-if [ -d "$STORAGE_BACKUP/app/public" ]; then
-    echo "📁 Restauration des uploads..."
-    mkdir -p storage/app
-    cp -r "$STORAGE_BACKUP/app/public" storage/app/
-    echo "✅ Uploads restaurés"
+# Vérifier que APP_KEY existe dans .env
+if ! grep -q "APP_KEY=base64:" .env; then
+    echo "🔑 Correction de la clé API..."
+    KEY=$(php -r "echo 'base64:'.base64_encode(random_bytes(32));")
+    sed -i "s|APP_KEY=.*|APP_KEY=$KEY|" .env
+    echo "✅ Clé API régénérée"
 fi
 
-# Restaurer les logs importants
-if [ -d "$STORAGE_BACKUP/logs" ] && [ "$(ls -A $STORAGE_BACKUP/logs 2>/dev/null)" ]; then
-    echo "📋 Restauration des logs récents..."
-    mkdir -p storage/logs
-    # Garder seulement les 5 derniers fichiers de log
-    find "$STORAGE_BACKUP/logs" -name "*.log" -type f -exec ls -t {} + | head -5 | xargs -I {} cp {} storage/logs/
-    echo "✅ Logs récents restaurés"
+# Configuration URL si manquante
+if ! grep -q "APP_URL=" .env; then
+    echo "APP_URL=https://vps-d91fd27c.vps.ovh.net" >> .env
+    echo "✅ APP_URL ajouté"
 fi
 
-# Étape 5: Création de la structure des dossiers
-echo "📁 CRÉATION DES DOSSIERS LARAVEL"
+# Étape 5: Création de la structure COMPLÈTE
+echo "📁 CRÉATION STRUCTURE LARAVEL"
 mkdir -p storage/app/public
 mkdir -p storage/framework/sessions
-mkdir -p storage/framework/views
+mkdir -p storage/framework/views  
 mkdir -p storage/framework/cache/data
 mkdir -p storage/logs
 mkdir -p bootstrap/cache
-mkdir -p vendor
 echo "✅ Structure des dossiers créée"
 
-# Étape 6: Installation des dépendances Composer
-echo "📦 INSTALLATION DES DÉPENDANCES COMPOSER"
-composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
-echo "✅ Dépendances Composer installées"
+# Étape 6: Installation Composer SANS SCRIPTS
+echo "📦 INSTALLATION DÉPENDANCES COMPOSER"
+composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev --no-scripts
+echo "✅ Dépendances Composer installées (sans scripts)"
 
-# Étape 7: Configuration des permissions POUR APACHE
-echo "🔐 CONFIGURATION DES PERMISSIONS APACHE"
+# Étape 7: PERMISSIONS APACHE AVANT LARAVEL
+echo "🔐 CONFIGURATION PERMISSIONS APACHE"
 sudo chown -R www-data:www-data "$APP_DIR"
 sudo chmod -R 755 "$APP_DIR"
 sudo chmod -R 775 storage bootstrap/cache
 sudo chmod -R 777 storage/framework/cache storage/logs storage/app/public
 
-# Créer les fichiers de cache vides avec les bonnes permissions
+# Créer les fichiers requis avec bonnes permissions
 sudo -u www-data touch storage/logs/laravel.log
-sudo -u www-data touch bootstrap/cache/config.php
-sudo -u www-data touch bootstrap/cache/packages.php
-sudo -u www-data touch bootstrap/cache/services.php
-
 sudo chmod 666 storage/logs/laravel.log
-sudo chmod 666 bootstrap/cache/config.php
-sudo chmod 666 bootstrap/cache/packages.php
-sudo chmod 666 bootstrap/cache/services.php
-
 echo "✅ Permissions Apache configurées"
 
-# Étape 8: Configuration de l'application Laravel
-echo "⚙️  CONFIGURATION LARAVEL"
+# Étape 8: RÉINITIALISATION LARAVEL ÉTAPE PAR ÉTAPE
+echo "⚙️  RÉINITIALISATION LARAVEL"
 
-# Génération de la clé API si nécessaire
-if ! grep -q "APP_KEY=base64" .env; then
-    echo "🔑 Génération de la clé API..."
-    KEY=$(php -r "echo 'base64:'.base64_encode(random_bytes(32));")
-    sed -i "s/APP_KEY=/APP_KEY=$KEY/" .env
-    echo "✅ Clé API générée"
-else
-    echo "✅ Clé API déjà configurée"
+# Test de base de Laravel AVANT toute commande artisan
+echo "🔍 Test de base Laravel..."
+if ! php artisan --version >/dev/null 2>&1; then
+    echo "❌ ERREUR: Laravel ne démarre pas correctement"
+    echo "🔧 Vérification du fichier .env..."
+    cat .env | head -10
+    exit 1
 fi
+echo "✅ Laravel démarre correctement"
 
-# Configuration de l'URL si nécessaire
-if ! grep -q "APP_URL=" .env; then
-    echo "APP_URL=https://vps-d91fd27c.vps.ovh.net" >> .env
-    echo "✅ APP_URL configuré"
-fi
+# Maintenant on peut vider les caches proprement
+echo "🧹 Vidage des caches Laravel..."
+php artisan config:clear >/dev/null 2>&1 || true
+php artisan cache:clear >/dev/null 2>&1 || true
+php artisan route:clear >/dev/null 2>&1 || true
+php artisan view:clear >/dev/null 2>&1 || true
+echo "✅ Caches vidés"
 
-# Étape 9: OPTIMISATIONS LARAVEL PRODUCTION
-echo "⚡ OPTIMISATIONS PRODUCTION LARAVEL"
-composer dump-autoload --optimize
+# Exécuter les scripts Composer maintenant que Laravel fonctionne
+echo "📦 Finalisation Composer..."
+composer run-script post-autoload-dump --no-interaction
+echo "✅ Scripts Composer exécutés"
 
-# Vider et recréer les caches proprement
-php artisan config:clear 2>/dev/null || true
-php artisan route:clear 2>/dev/null || true
-php artisan view:clear 2>/dev/null || true
+# Étape 9: OPTIMISATIONS PRODUCTION SEULEMENT SI TOUT FONCTIONNE
+echo "⚡ OPTIMISATIONS PRODUCTION"
 
-# Générer les caches optimisés
-php artisan config:cache 2>/dev/null || echo "⚠️  Config cache non généré (normal si DB non accessible)"
-php artisan route:cache 2>/dev/null || echo "⚠️  Route cache non généré"
-php artisan view:cache 2>/dev/null || echo "⚠️  View cache non généré"
-
-echo "✅ Optimisations appliquées"
-
-# Étape 10: MIGRATIONS BASE DE DONNÉES SÉCURISÉES
-echo "🗄️  MIGRATIONS BASE DE DONNÉES"
-
-# Vérification de la connexion DB avant migration
+# Tester si la base de données est accessible avant les optimisations
+echo "🗄️  Test de connexion base de données..."
 if php artisan migrate:status >/dev/null 2>&1; then
-    echo "✅ Connexion à la base de données réussie"
+    echo "✅ Base de données accessible"
     
-    # Backup DB avant migration
-    echo "💾 Backup de la base de données..."
-    php artisan backup:run --only-db 2>/dev/null || echo "⚠️  Backup DB non disponible"
-    
-    # Exécuter les migrations
+    # Faire les migrations si nécessaire
     php artisan migrate --force
     echo "✅ Migrations exécutées"
+    
+    # Générer les caches optimisés
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
+    echo "✅ Caches optimisés générés"
+    
 else
-    echo "⚠️  Impossible de se connecter à la base de données"
-    echo "Vérifiez votre configuration .env"
-    echo "L'application fonctionnera mais sans accès DB"
+    echo "⚠️  Base de données non accessible - optimisations limitées"
+    echo "L'application fonctionnera mais sans base de données"
 fi
 
-# Étape 11: LIEN DE STOCKAGE AVEC PERMISSIONS
-echo "🔗 LIEN DE STOCKAGE"
+# Étape 10: RESTAURATION DES UPLOADS
+echo "📁 RESTAURATION DES UPLOADS"
+if [ -d "$STORAGE_BACKUP" ]; then
+    echo "📁 Restauration des fichiers uploadés..."
+    cp -r "$STORAGE_BACKUP"/* storage/app/public/ 2>/dev/null || true
+    sudo chown -R www-data:www-data storage/app/public
+    echo "✅ Uploads restaurés"
+fi
 
-# Supprimer l'ancien lien s'il existe
+# Étape 11: LIEN DE STOCKAGE
+echo "🔗 CONFIGURATION LIEN STOCKAGE"
 if [ -L "public/storage" ]; then
     rm public/storage
 fi
-
-# Créer le nouveau lien
 sudo -u www-data ln -sf ../storage/app/public public/storage
 echo "✅ Lien de stockage créé"
 
-# Étape 12: NETTOYAGE DES FICHIERS TEMPORAIRES
+# Étape 12: NETTOYAGE FINAL
 echo "🧹 NETTOYAGE FINAL"
 rm -rf "$STORAGE_BACKUP" "$ENV_BACKUP" 2>/dev/null || true
-echo "✅ Fichiers temporaires nettoyés"
+echo "✅ Fichiers temporaires supprimés"
 
-# Étape 13: VÉRIFICATIONS FINALES
+# Étape 13: VÉRIFICATIONS COMPLÈTES
 echo "✅ VÉRIFICATIONS FINALES"
 
-# Tests de base
 declare -i ERROR_COUNT=0
 
-if [ -d public ] && [ -f public/index.php ]; then
-    echo "✅ public/index.php trouvé"
+# Vérifications critiques
+if [ -f public/index.php ]; then
+    echo "✅ public/index.php présent"
 else
-    echo "❌ ERREUR: public/index.php introuvable !"
+    echo "❌ public/index.php manquant"
     ERROR_COUNT+=1
 fi
 
-if [ -d vendor ] && [ -f vendor/autoload.php ]; then
-    echo "✅ vendor/autoload.php trouvé"
+if [ -f vendor/autoload.php ]; then
+    echo "✅ vendor/autoload.php présent"  
 else
-    echo "❌ ERREUR: vendor/autoload.php introuvable !"
+    echo "❌ vendor/autoload.php manquant"
     ERROR_COUNT+=1
 fi
 
 if [ -f .env ]; then
     echo "✅ Fichier .env présent"
 else
-    echo "❌ ERREUR: Fichier .env manquant"
+    echo "❌ Fichier .env manquant"
     ERROR_COUNT+=1
 fi
 
-if [ -L "public/storage" ]; then
-    echo "✅ Lien de stockage présent"
+# Test Laravel critique
+if php artisan --version >/dev/null 2>&1; then
+    echo "✅ Laravel fonctionnel"
 else
-    echo "⚠️  Lien de stockage manquant"
-fi
-
-# Test rapide PHP
-if php -v >/dev/null 2>&1; then
-    echo "✅ PHP fonctionnel"
-else
-    echo "❌ ERREUR: PHP non fonctionnel"
+    echo "❌ Laravel non fonctionnel"
     ERROR_COUNT+=1
 fi
 
-# Vérifier les permissions critiques
+# Test permissions
 if [ -w storage/logs ]; then
-    echo "✅ Permissions storage/logs OK"
+    echo "✅ Permissions storage OK"
 else
-    echo "❌ ERREUR: storage/logs non accessible en écriture"
+    echo "❌ Permissions storage NOK"
     ERROR_COUNT+=1
+fi
+
+# Test lien stockage
+if [ -L public/storage ]; then
+    echo "✅ Lien stockage OK"
+else
+    echo "⚠️  Lien stockage manquant"
 fi
 
 # Résultat final
 if [ $ERROR_COUNT -eq 0 ]; then
     echo "=========================================="
     echo "🎉 DÉPLOIEMENT RÉUSSI SANS ERREUR !"
-    echo "🌐 Votre application est disponible sur:"
+    echo "🌐 Application disponible sur:"
     echo "   https://vps-d91fd27c.vps.ovh.net"
     echo "=========================================="
+    exit 0
 else
     echo "=========================================="
-    echo "⚠️  DÉPLOIEMENT TERMINÉ AVEC $ERROR_COUNT ERREUR(S)"
+    echo "❌ DÉPLOIEMENT ÉCHOUÉ - $ERROR_COUNT ERREUR(S)"
     echo "Vérifiez les messages ci-dessus"
     echo "=========================================="
     exit 1
 fi
-
-echo ""
-echo "💡 INFORMATION:"
-echo "   L'application est maintenant optimisée pour la production"
-echo "   Les caches Laravel accéléreront les performances"
-echo ""
