@@ -99,6 +99,13 @@ jobs:
             echo "📦 Installation Composer..."
             sudo -u www-data composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
             echo "✅ Dépendances installées"
+
+            # 🔹 Génération Swagger
+            sudo mkdir -p storage/api-docs
+            sudo chown -R www-data:www-data storage/api-docs
+            sudo chmod -R 775 storage/api-docs
+            sudo -u www-data php artisan l5-swagger:generate
+            echo "✅ Documentation Swagger générée"
             
             # Restauration uploads
             echo "📁 Restauration des fichiers uploadés..."
