@@ -6,17 +6,17 @@ echo "==> Déploiement démarré"
 # Se placer dans le dossier du projet
 cd "$(dirname "$0")"
 
+# Mettre à jour le code depuis Git
+echo "==> Récupération du code depuis Git"
+git fetch origin
+git reset --hard origin/main
+
 # Vérifier si .env existe, sinon copier depuis .env.example
 if [ ! -f .env ]; then
     echo "⚠️  .env introuvable. Copie de .env.example vers .env"
     cp .env.example .env
     echo "✅ .env créé"
 fi
-
-# Mettre à jour le code depuis Git
-echo "==> Récupération du code depuis Git"
-git fetch origin
-git reset --hard origin/main
 
 # Installer les dépendances Composer
 echo "==> Installation des dépendances"
@@ -37,16 +37,21 @@ fi
 
 # Nettoyer et mettre en cache la configuration Laravel
 echo "==> Gestion du cache Laravel"
-sudo -u www-data php artisan config:clear
-sudo -u www-data php artisan cache:clear
-sudo -u www-data php artisan config:cache
+sudo -u www-data php artisan config:clear || true
+sudo -u www-data php artisan cache:clear || true
+sudo -u www-data php artisan config:cache || true
 
 # Exécuter les migrations
 echo "==> Exécution des migrations"
 sudo -u www-data php artisan migrate --force
 
-# Redémarrer Apache (ou autre service si nécessaire)
 echo "==> Redémarrage du serveur web"
-sudo systemctl restart apache2 || echo "⚠️ Impossible de redémarrer apache2 automatiquement"
+if systemctl is-active --quiet apache2; then
+    sudo systemctl restart apache2
+elif systemctl is-active --quiet nginx; then
+    sudo systemctl restart nginx
+else
+    echo "⚠️ Aucun serveur web détecté à redémarrer automatiquement"
+fi
 
 echo "==> Déploiement terminé avec succès"
