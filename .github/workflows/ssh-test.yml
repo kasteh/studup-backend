@@ -1,0 +1,16 @@
+name: SSH Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-ssh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Test connection to VPS
+        run: ssh -o StrictHostKeyChecking=no ubuntu@vps-d91fd27c.vps.ovh.net 'echo "SSH connection OK!"'
