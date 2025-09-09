@@ -20,32 +20,44 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "🚀 Début du déploiement..."
+            
+            # Aller dans /var/www
             cd /var/www
             
-            # Sauvegarde rapide de l'ancien .env si existant
-            if [ -f studup-backend/.env ]; then
+            # Sauvegarde de l'ancien .env si existant
+            if [ -d studup-backend ] && [ -f studup-backend/.env ]; then
                 cp studup-backend/.env /tmp/studup_env_backup
                 echo "📦 Sauvegarde du .env existant"
             fi
             
-            # Suppression et nouveau clone
+            # Supprimer l'ancien dossier et cloner le nouveau
             rm -rf studup-backend
             git clone https://github.com/kasteh/studup-backend.git
             cd studup-backend
             
-            # Restauration du .env sauvegardé
+            # Restaurer le .env sauvegardé
             if [ -f /tmp/studup_env_backup ]; then
                 cp /tmp/studup_env_backup .env
                 echo "✅ .env restauré"
                 rm /tmp/studup_env_backup
             fi
             
-            # Exécution du script de déploiement
+            # Donner les permissions d'exécution
             chmod +x deploy.sh
+            
+            # Exécuter le script de déploiement
             ./deploy.sh
             
-            # Redémarrage d'Apache
+            # Redémarrer Apache pour appliquer les changements
             sudo systemctl restart apache2
             echo "🔄 Apache redémarré"
             
-            echo "🎉 Déploiement terminé avec succès !"
+            # Vérification finale
+            echo "📋 Vérification de l'application..."
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost | grep -q "200"; then
+                echo "🎉 L'application fonctionne correctement !"
+            else
+                echo "⚠️  Vérifiez les logs Apache: sudo tail -f /var/log/apache2/error.log"
+            fi
+            
+            echo "✅ Déploiement terminé ! Accédez à: https://vps-d91fd27c.vps.ovh.net"
