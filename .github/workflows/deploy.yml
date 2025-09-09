@@ -1,4 +1,4 @@
-name: Deploy
+name: Déploiement Studup
 
 on:
   push:
@@ -9,7 +9,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout du code
         uses: actions/checkout@v3
 
       - name: Déploiement sur le serveur
@@ -19,9 +19,33 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            echo "🚀 Début du déploiement..."
             cd /var/www
+            
+            # Sauvegarde rapide de l'ancien .env si existant
+            if [ -f studup-backend/.env ]; then
+                cp studup-backend/.env /tmp/studup_env_backup
+                echo "📦 Sauvegarde du .env existant"
+            fi
+            
+            # Suppression et nouveau clone
             rm -rf studup-backend
             git clone https://github.com/kasteh/studup-backend.git
             cd studup-backend
+            
+            # Restauration du .env sauvegardé
+            if [ -f /tmp/studup_env_backup ]; then
+                cp /tmp/studup_env_backup .env
+                echo "✅ .env restauré"
+                rm /tmp/studup_env_backup
+            fi
+            
+            # Exécution du script de déploiement
             chmod +x deploy.sh
             ./deploy.sh
+            
+            # Redémarrage d'Apache
+            sudo systemctl restart apache2
+            echo "🔄 Apache redémarré"
+            
+            echo "🎉 Déploiement terminé avec succès !"
