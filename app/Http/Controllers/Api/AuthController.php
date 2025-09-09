@@ -19,7 +19,7 @@ class AuthController extends Controller
      *         required=true,
      *         @OA\JsonContent(
      *             required={"prenom","nom","emailUniversitaire","motdepasse","Terms"},
-     *             @OA\Property(property="UserType", type="string", example="student"),
+     *             @OA\Property(property="userType", type="string", example="student"),
      *             @OA\Property(property="prenom", type="string", example="John"),
      *             @OA\Property(property="nom", type="string", example="Doe"),
      *             @OA\Property(property="emailUniversitaire", type="string", example="john.doe@univ.com"),
@@ -34,7 +34,7 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $data = $request->validate([
-            'UserType' => 'required|string',
+            'userType' => 'required|string',
             'prenom' => 'required|string',
             'nom' => 'required|string',
             'emailUniversitaire' => 'required|email|unique:users,emailUniversitaire',
@@ -43,7 +43,7 @@ class AuthController extends Controller
         ]);
 
         $user = User::create([
-            'UserType' => $data['UserType'],
+            'userType' => $data['userType'],
             'prenom' => $data['prenom'],
             'nom' => $data['nom'],
             'emailUniversitaire' => $data['emailUniversitaire'],
