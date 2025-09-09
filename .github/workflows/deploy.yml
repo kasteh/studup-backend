@@ -91,6 +91,10 @@ jobs:
             sudo chmod 666 storage/logs/laravel.log
             echo "✅ Permissions configurées"
 
+            # 📦 Préparer le cache de Composer (pour éviter le warning)
+            sudo mkdir -p /var/www/.cache/composer
+            sudo chown -R www-data:www-data /var/www/.cache
+
             # Installation Composer (en www-data)
             echo "📦 Installation Composer..."
             sudo -u www-data composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
