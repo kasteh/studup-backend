@@ -119,7 +119,7 @@ jobs:
             sudo -u www-data php artisan cache:clear
             sudo -u www-data php artisan route:clear
             sudo -u www-data php artisan view:clear
-            composer dump-autoload --optimize
+            sudo -u www-data composer dump-autoload --optimize
             
             # Test Laravel
             echo "🔍 Test de fonctionnement Laravel..."
@@ -128,7 +128,7 @@ jobs:
             else
                 echo "❌ ERREUR: Problème avec l'autoloader"
                 echo "📋 Tentative de réparation..."
-                composer dump-autoload
+                sudo -u www-data composer dump-autoload
                 echo "✅ Autoloader réparé"
             fi
             
