@@ -23,7 +23,7 @@ class FrontendCors
                     ->json([], 204)
                     ->header('Access-Control-Allow-Origin', $origin)
                     ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-                    ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key')
+                    ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
                     ->header('Access-Control-Allow-Credentials', 'true');
             }
 
