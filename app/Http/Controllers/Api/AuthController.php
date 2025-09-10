@@ -62,6 +62,12 @@ class AuthController extends Controller
                 return $this->userProspectOrchestrator->createOrUpdateUser($dataUser);
             });
 
+            $userEmail = $dataUser['emailUniversitaire'];
+
+            $verificationRequest = new Request(['emailUniversitaire' => $userEmail]);
+            $verificationController = new VerificationController();
+            $verificationController->sendVerificationCode($verificationRequest);
+
             return response()->json([
                 'code'      => 'success',
                 'message'   => 'user_created',
@@ -76,7 +82,7 @@ class AuthController extends Controller
             ], 422);
         } catch (QueryException $qe) {
             // Gestion spécifique pour duplicate email
-            if (isset($qe->errorInfo[1]) && $qe->errorInfo[1] == 1062) {
+            if (isset($qe->errorInfo[1]) && $qe->errorInfo[1] == 23505) {
                 return response()->json([
                     'code'    => 'error',
                     'message' => 'email_already_exists'
