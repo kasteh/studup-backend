@@ -2,14 +2,25 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
+use Illuminate\Routing\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Services\Orchestrators\UserProspectOrchestrator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Database\QueryException;
+use Exception;
 
 class AuthController extends Controller
 {
+    protected UserProspectOrchestrator $userProspectOrchestrator;
+
+    public function __construct(UserProspectOrchestrator $userProspectOrchestrator)
+    {
+        $this->userProspectOrchestrator = $userProspectOrchestrator;
+    }
+
     /**
      * @OA\Post(
      *     path="/api/register",
@@ -40,39 +51,54 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
-        $data = $request->validate([
-            'userType' => 'required|in:student,organism,admin',
-            'prenom' => 'required|string|max:255',
-            'nom' => 'required|string|max:255',
-            'nationalite' => 'required|string|max:255',
-            'birthDate' => 'required|date',
-            'genre' => 'required|in:male,female,other',
-            'adresse' => 'required|string|max:255',
-            'codePostale' => 'required|string|max:20',
-            'pays' => 'required|string|max:255',
-            'numeroTelephone' => 'required|string|max:20',
-            'emailUniversitaire' => 'required|email|unique:users,emailUniversitaire',
-            'motdepasse' => 'required|string|min:6',
-            'terms' => 'required|boolean',
-        ]);
+        try {
+            $payload = $request->validate([
+                'data.data_user' => 'required|array',
+            ]);
 
-        $user = User::create([
-            'userType' => $data['userType'],
-            'prenom' => $data['prenom'],
-            'nom' => $data['nom'],
-            'nationalite' => $data['nationalite'],
-            'birthDate' => $data['birthDate'],
-            'genre' => $data['genre'],
-            'adresse' => $data['adresse'],
-            'codePostale' => $data['codePostale'],
-            'pays' => $data['pays'],
-            'numeroTelephone' => $data['numeroTelephone'],
-            'emailUniversitaire' => $data['emailUniversitaire'],
-            'motdepasse' => Hash::make($data['motdepasse']),
-            'terms' => $data['terms'],
-        ]);
+            $dataUser = $payload['data']['data_user'];
 
-        return response()->json($user, 201);
+            $result = DB::transaction(function () use ($dataUser) {
+                return $this->userProspectOrchestrator->createOrUpdateUser($dataUser);
+            });
+
+            return response()->json([
+                'code'      => 'success',
+                'message'   => 'user_created',
+                'iduser'    => $result['iduser'],
+                'token'   => $result['token'] ?? null,
+            ], 201);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'code'    => 'error',
+                'message' => 'validation_error',
+                'errors'  => $e->errors(),
+            ], 422);
+        } catch (QueryException $qe) {
+            // Gestion spécifique pour duplicate email
+            if (isset($qe->errorInfo[1]) && $qe->errorInfo[1] == 1062) {
+                return response()->json([
+                    'code'    => 'error',
+                    'message' => 'email_already_exists'
+                ], 422);
+            }
+            return response()->json([
+                'code'         => 'error',
+                'message'      => 'sql_problem',
+                'errorDetails' => config('app.env') !== 'production'
+                    ? $qe->getMessage()
+                    : null
+            ], 500);
+        } catch (Exception $e) {
+            $errorMessage = $e->getMessage();
+            return response()->json([
+                'code'         => 'error',
+                'message'      => $errorMessage,
+                'errorDetails' => config('app.env') !== 'production'
+                    ? $e->getMessage()
+                    : null
+            ], 500);
+        }
     }
 
     /**

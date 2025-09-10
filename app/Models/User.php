@@ -11,6 +11,12 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+    protected $primaryKey = 'id';
+
+    public $incrementig = true;
+
+    protected $keyType = 'int';
+
     protected $fillable = [
         'userType',
         'prenom',
@@ -32,15 +38,14 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    // Laravel s'attend à 'password', ici on redéfinit
+    protected $casts = [
+        'birthDate' => 'date:d-m-Y',
+        'terms' => 'boolean',
+        'motdepsse' => 'hashed'
+    ];
+
     public function getAuthPassword()
     {
         return $this->motdepasse;
     }
-
-    // Cast pour birthDate
-    protected $casts = [
-        'birthDate' => 'date:d-m-Y',
-        'terms' => 'boolean',
-    ];
 }
