@@ -48,7 +48,7 @@ class AuthController extends Controller
             'nom' => $data['nom'],
             'emailUniversitaire' => $data['emailUniversitaire'],
             'motdepasse' => Hash::make($data['motdepasse']),
-            'terms' => $data['Terms'],
+            'terms' => $data['terms'],
         ]);
 
         return response()->json($user, 201);
