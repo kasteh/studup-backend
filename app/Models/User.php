@@ -41,7 +41,8 @@ class User extends Authenticatable
     protected $casts = [
         'birthDate' => 'date:d-m-Y',
         'terms' => 'boolean',
-        'motdepsse' => 'hashed'
+        'motdepsse' => 'hashed',
+        'nationalite' => 'array',
     ];
 
     public function getAuthPassword()
