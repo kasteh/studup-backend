@@ -6,7 +6,13 @@ use App\Http\Middleware\FrontendCors;
 use App\Http\Middleware\CheckFrontendApiKey;
 
 
-Route::group(['middleware' => [CheckFrontendApiKey::class, 'throttle:100,1', FrontendCors::class]], function () {
+Route::group([
+    'middleware' => [
+        FrontendCors::class,
+        CheckFrontendApiKey::class,
+        'throttle:100,1'
+    ]
+], function () {
     Route::post('/register', [AuthController::class, 'register'])->name('users.register')->middleware('throttle:100,1');
 
     Route::middleware('auth:sanctum')->group(function () {

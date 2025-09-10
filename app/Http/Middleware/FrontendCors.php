@@ -18,8 +18,7 @@ class FrontendCors
 
         // Répondre aux pré-vols OPTIONS
         if ($request->isMethod('OPTIONS')) {
-            return response()
-                ->json([], 204)
+            return response('', 204)
                 ->header('Access-Control-Allow-Origin', $origin)
                 ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
                 ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key')

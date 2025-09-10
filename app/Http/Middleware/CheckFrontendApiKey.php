@@ -8,6 +8,10 @@ class CheckFrontendApiKey
 {
     public function handle($request, Closure $next)
     {
+        if ($request->isMethod('OPTIONS')) {
+            return $next($request);
+        }
+
         $apiKey = $request->header('x-api-key');
 
         if ($apiKey !== config('app.frontend_api_key')) {
