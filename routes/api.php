@@ -3,9 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Middleware\FrontendCors;
+use App\Http\Middleware\CheckFrontendApiKey;
 
 
-Route::group(['middleware' => ['throttle:100,1', FrontendCors::class]], function () {
+Route::group(['prefix' => 'api', 'middleware' => [CheckFrontendApiKey::class, 'throttle:100,1', FrontendCors::class]], function () {
     Route::post('/register', [AuthController::class, 'register'])->name('users.register')->middleware('throttle:100,1');
 
     Route::middleware('auth:sanctum')->group(function () {

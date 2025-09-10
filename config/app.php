@@ -123,4 +123,5 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'frontend_api_key' => env('FRONTEND_API_KEY', 'c45ed31fed01037272dc87b8743f66a12c3ed0103727203727201037272d'),
 ];
