@@ -20,7 +20,7 @@
         <p>Bonjour,</p>
         <p>Merci de vous être inscrit sur StudUP. Pour finaliser votre inscription, veuillez utiliser le code de vérification ci-dessous :</p>
         <div class="code">
-            {{ $verificationCode }}
+            {{ $verificationcode }}
         </div>
         <p>Ce code est valable pour les 15 prochaines minutes.</p>
         <p>Si vous n'avez pas demandé ce code, vous pouvez ignorer cet e-mail en toute sécurité.</p>

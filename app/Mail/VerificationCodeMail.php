@@ -38,7 +38,7 @@ class VerificationCodeMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            html: view('emails.verification-code')->render(),
+            view: 'emails.verification-code',
         );
     }
 }
