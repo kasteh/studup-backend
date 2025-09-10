@@ -51,13 +51,16 @@ class VerificationController extends Controller
     public function verifyCode(Request $request)
     {
         try {
-            $request->validate([
+            $payload = $request->validate([
                 'emailUniversitaire' => 'required|email',
                 'code' => 'required|string|size:5',
             ]);
 
-            $verification = VerificationCode::where('emailUniversitaire', $request->email)
-                ->where('code', $request->code)
+            $email = $payload['emailUniversitaire'];
+            $code = $payload['code'];
+
+            $verification = VerificationCode::where('emailUniversitaire', $email)
+                ->where('code', $code)
                 ->first();
 
             if (!$verification) {
