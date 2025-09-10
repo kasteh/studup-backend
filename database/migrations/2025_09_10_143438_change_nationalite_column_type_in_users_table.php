@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -11,9 +12,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->jsonb('nationalite')->change();
-        });
+        // Convertir string existante en JSONB
+        // Exemple : 'France' → ["France"]
+        DB::statement("
+            ALTER TABLE users 
+            ALTER COLUMN nationalite 
+            TYPE jsonb 
+            USING to_jsonb(array[nationalite]);
+        ");
     }
 
     /**
@@ -21,8 +27,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('nationalite')->change();
-        });
+        // Revenir à string (on prend le premier élément du tableau)
+        DB::statement("
+            ALTER TABLE users 
+            ALTER COLUMN nationalite 
+            TYPE varchar 
+            USING (nationalite->>0);
+        ");
     }
 };
