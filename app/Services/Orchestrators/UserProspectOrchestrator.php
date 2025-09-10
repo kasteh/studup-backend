@@ -46,7 +46,7 @@ class UserProspectOrchestrator
             'prenom'               => $dataUser['prenom'] ?? null,
             'nom'                  => $dataUser['nom'] ?? null,
             'nationalite'          => $dataUser['nationalite'] ?? null,
-            'dateNaissance'        => $dataUser['dateNaissance'] ?? null,
+            'birthDate'            => $dataUser['dateNaissance'] ?? null,
             'genre'                => $dataUser['genre'] ?? 'homme',
             'adresse'              => $dataUser['adresse'] ?? null,
             'codePostale'          => $dataUser['codePostale'] ?? null,
