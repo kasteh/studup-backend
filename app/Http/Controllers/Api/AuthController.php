@@ -136,7 +136,7 @@ class AuthController extends Controller
 
         $user = User::where('emailUniversitaire', $email)->first();
 
-        if (! $user || ! Hash::check($motdepasse, $motdepasse)) {
+        if (! $user || ! Hash::check($motdepasse, $user->motdepasse)) {
             throw ValidationException::withMessages([
                 'emailUniversitaire' => ['Les informations d\'identification sont incorrectes.'],
             ]);
@@ -144,6 +144,11 @@ class AuthController extends Controller
 
         $token = $user->createToken('api-token')->plainTextToken;
 
-        return response()->json(['token' => $token], 200);
+        return response()->json([
+            'code'      => 'success',
+            'message'   => 'successfully Login',
+            'token' => $token,
+            'userType'  => $user->userType,
+        ], 200);
     }
 }
