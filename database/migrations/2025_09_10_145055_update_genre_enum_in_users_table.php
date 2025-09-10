@@ -2,43 +2,55 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     /**
      * Run the migrations.
+     *
+     * @return void
      */
     public function up(): void
     {
-        $enumTypeName = 'enum_name';
+        DB::transaction(function () {
+            DB::table('users')->where('genre', 'male')->update(['genre' => 'homme']);
+            DB::table('users')->where('genre', 'female')->update(['genre' => 'femme']);
+            DB::table('users')->where('genre', 'other')->update(['genre' => 'ne_se_prononce_pas']);
 
-        $newValues = [
-            'homme',
-            'femme',
-            'ne_se_prononce_pas',
-            'personne_trans',
-            'non_binaire'
-        ];
+            $constraintName = 'users_genre_check';
 
-        foreach ($newValues as $value) {
-            DB::statement("
-                DO $$ BEGIN
-                    BEGIN
-                        ALTER TYPE {$enumTypeName} ADD VALUE IF NOT EXISTS '{$value}';
-                    EXCEPTION
-                        WHEN duplicate_object THEN NULL;
-                    END;
-                END $$;
-            ");
-        }
+            DB::statement("ALTER TABLE users DROP CONSTRAINT {$constraintName}");
+
+            $newValues = "'homme', 'femme', 'ne_se_prononce_pas', 'personne_trans', 'non_binaire'";
+            DB::statement("ALTER TABLE users ADD CONSTRAINT {$constraintName} CHECK (genre IN ({$newValues}))");
+        });
     }
 
     /**
      * Reverse the migrations.
+     *
+     * @return void
      */
     public function down(): void
     {
-        // PostgreSQL ne permet pas de supprimer directement des valeurs enum
-        // Pour rollback, il faudrait recréer le type depuis zéro
+        DB::transaction(function () {
+            DB::table('users')->whereIn('genre', ['personne_trans', 'non_binaire'])->update(['genre' => 'ne_se_prononce_pas']);
+
+            // 1. Reconvertir les valeurs à l'ancien format
+            DB::table('users')->where('genre', 'homme')->update(['genre' => 'male']);
+            DB::table('users')->where('genre', 'femme')->update(['genre' => 'female']);
+            DB::table('users')->where('genre', 'ne_se_prononce_pas')->update(['genre' => 'other']);
+
+            $constraintName = 'users_genre_check';
+
+            // 2. Supprimer la contrainte CHECK actuelle
+            DB::statement("ALTER TABLE users DROP CONSTRAINT {$constraintName}");
+
+            // 3. Rajouter l'ancienne contrainte CHECK
+            $oldValues = "'male', 'female', 'other'";
+            DB::statement("ALTER TABLE users ADD CONSTRAINT {$constraintName} CHECK (genre IN ({$oldValues}))");
+        });
     }
 };
