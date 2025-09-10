@@ -126,14 +126,17 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        $request->validate([
+        $payload = $request->validate([
             'emailUniversitaire' => 'required|email',
             'motdepasse' => 'required|string',
         ]);
 
-        $user = User::where('emailUniversitaire', $request->emailUniversitaire)->first();
+        $email = $payload['emailUniversitaire'];
+        $motdepasse = $payload['motdepasse'];
 
-        if (! $user || ! Hash::check($request->motdepasse, $user->motdepasse)) {
+        $user = User::where('emailUniversitaire', $email)->first();
+
+        if (! $user || ! Hash::check($motdepasse, $motdepasse)) {
             throw ValidationException::withMessages([
                 'emailUniversitaire' => ['Les informations d\'identification sont incorrectes.'],
             ]);
