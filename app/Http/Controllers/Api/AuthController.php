@@ -149,6 +149,6 @@ class AuthController extends Controller
             'message'   => 'successfully Login',
             'token' => $token,
             'userType'  => $user->userType,
-        ], 200);
+        ], 200)->cookie('authToken', $token, 60 * 24);
     }
 }
