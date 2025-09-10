@@ -18,13 +18,13 @@ class AuthController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"prenom","nom","emailUniversitaire","motdepasse","Terms"},
+     *             required={"prenom","nom","emailUniversitaire","motdepasse","terms"},
      *             @OA\Property(property="userType", type="string", example="student"),
      *             @OA\Property(property="prenom", type="string", example="John"),
      *             @OA\Property(property="nom", type="string", example="Doe"),
      *             @OA\Property(property="emailUniversitaire", type="string", example="john.doe@univ.com"),
      *             @OA\Property(property="motdepasse", type="string", format="password", example="secret123"),
-     *             @OA\Property(property="Terms", type="boolean", example=true)
+     *             @OA\Property(property="terms", type="boolean", example=true)
      *         )
      *     ),
      *     @OA\Response(response=201, description="Utilisateur créé"),
@@ -39,7 +39,7 @@ class AuthController extends Controller
             'nom' => 'required|string',
             'emailUniversitaire' => 'required|email|unique:users,emailUniversitaire',
             'motdepasse' => 'required|string|min:6',
-            'Terms' => 'required|boolean',
+            'terms' => 'required|boolean',
         ]);
 
         $user = User::create([
@@ -48,7 +48,7 @@ class AuthController extends Controller
             'nom' => $data['nom'],
             'emailUniversitaire' => $data['emailUniversitaire'],
             'motdepasse' => Hash::make($data['motdepasse']),
-            'Terms' => $data['Terms'],
+            'terms' => $data['Terms'],
         ]);
 
         return response()->json($user, 201);
