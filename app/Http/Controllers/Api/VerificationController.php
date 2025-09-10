@@ -18,10 +18,10 @@ class VerificationController extends Controller
     public function sendVerificationCode(Request $request)
     {
         try {
-            $request->validate([
-                'emailUniversitaire' => 'required|email'
+            $payload = $request->validate([
+                'emailUniversitaire' => 'required'
             ]);
-            $email = $request->input('emailUniversitaire');
+            $email = $payload['emailUniversitaire'];
             $code = str_pad(random_int(0, 99999), 5, '0', STR_PAD_LEFT);
 
             VerificationCode::updateOrCreate(
