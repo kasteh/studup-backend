@@ -20,6 +20,7 @@ Route::group([
     Route::post('/verify-code', [VerificationController::class, 'verifyCode']);
     Route::post('/login', [AuthController::class, 'login'])->name('users.login');
     Route::get('/domaines', [DomaineController::class, 'index'])->name('domaines.list');
+    Route::get('/disciplines', [DomaineController::class, 'getDisciplines'])->name('disciplines.list');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('users.logout');

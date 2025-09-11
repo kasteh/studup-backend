@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Discipline;
 use App\Models\Domaine;
 use Illuminate\Http\JsonResponse;
 
@@ -28,6 +29,28 @@ class DomaineController extends Controller
             'code'    => 'success',
             'message' => 'Liste des domaines récupérée avec succès',
             'data'    => $domaines,
+        ], 200);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/api/disciplines",
+     *     summary="Liste des disciplines",
+     *     tags={"Domaines"},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Liste des disciplines récupérée avec succès"
+     *     )
+     * )
+     */
+    public function getDisciplines(): JsonResponse
+    {
+        $disciplines = Discipline::all();
+
+        return response()->json([
+            'code'          => 'success',
+            'message'       => 'Liste des disciplines récupérée avec succès',
+            'data'          => $disciplines,
         ], 200);
     }
 }
