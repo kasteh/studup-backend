@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\VerificationController;
 use App\Http\Middleware\FrontendCors;
 use App\Http\Middleware\CheckFrontendApiKey;
+use App\Http\Controllers\Api\DomaineController;
 
 
 Route::group([
@@ -18,6 +19,7 @@ Route::group([
     Route::post('/send-verification-code', [VerificationController::class, 'sendVerificationCode']);
     Route::post('/verify-code', [VerificationController::class, 'verifyCode']);
     Route::post('/login', [AuthController::class, 'login'])->name('users.login');
+    Route::get('/domaines', [DomaineController::class, 'index'])->name('domaines.list');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('users.logout');
