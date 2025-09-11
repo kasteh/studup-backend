@@ -151,4 +151,33 @@ class AuthController extends Controller
             'userType'  => $user->userType,
         ], 200)->cookie('authToken', $token, 60 * 24);
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/logout",
+     *     summary="Logout user",
+     *     tags={"Auth"},
+     *     security={{"sanctum": {}}},
+     *     @OA\Response(response=200, description="Déconnexion réussie"),
+     *     @OA\Response(response=401, description="Non autorisé")
+     * )
+     */
+    public function logout(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user) {
+            $user->tokens()->delete();
+
+            return response()->json([
+                'code' => 'success',
+                'message' => 'Successfully logged out',
+            ])->withoutCookie('authToken');
+        }
+
+        return response()->json([
+            'code' => 'error',
+            'message' => 'User not authenticated',
+        ], 401);
+    }
 }

@@ -20,6 +20,6 @@ Route::group([
     Route::post('/login', [AuthController::class, 'login'])->name('users.login');
 
     Route::middleware('auth:sanctum')->group(function () {
-        //
+        Route::post('/logout', [AuthController::class, 'logout'])->name('users.logout');
     });
 });
