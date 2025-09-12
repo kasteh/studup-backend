@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\VerificationController;
 use App\Http\Middleware\FrontendCors;
 use App\Http\Middleware\CheckFrontendApiKey;
 use App\Http\Controllers\Api\DomaineController;
+use App\Http\Controllers\Api\UserController;
 
 
 Route::group([
@@ -24,5 +25,7 @@ Route::group([
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('users.logout');
+
+        Route::get('/getUser', [UserController::class, 'getUser'])->name('users.get');
     });
 });
