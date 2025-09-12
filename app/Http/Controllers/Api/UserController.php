@@ -28,7 +28,11 @@ class UserController extends Controller
      *                 @OA\Property(property="userType", type="string", example="student"),
      *                 @OA\Property(property="prenom", type="string", example="John"),
      *                 @OA\Property(property="nom", type="string", example="Doe"),
-     *                 @OA\Property(property="nationalite", type="array", @OA\Items(type="string"), example=["french", "canadian"]),
+     *                 @OA\Property(
+     *                     property="nationalite", 
+     *                     type="array", 
+     *                     @OA\Items(type="string"), 
+     *                 ),
      *                 @OA\Property(property="birthDate", type="string", format="date", example="15-05-1995"),
      *                 @OA\Property(property="genre", type="string", example="male"),
      *                 @OA\Property(property="adresse", type="string", example="123 Rue Example"),
