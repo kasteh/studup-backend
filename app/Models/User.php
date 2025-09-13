@@ -49,4 +49,9 @@ class User extends Authenticatable
     {
         return $this->motdepasse;
     }
+
+    public function extrauser()
+    {
+        return $this->hasOne(Extrauser::class, 'user_id');
+    }
 }

@@ -77,9 +77,15 @@ class UserController extends Controller
                 ], 401);
             }
 
+            // Charger les données extrauser
+            $user->load('extrauser');
+
             return response()->json([
                 'success' => true,
-                'data' => new UserResource($user)
+                'data' => [
+                    'user' => new UserResource($user),
+                    'extrauser' => $user->extrauser
+                ]
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
