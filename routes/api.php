@@ -7,7 +7,7 @@ use App\Http\Middleware\FrontendCors;
 use App\Http\Middleware\CheckFrontendApiKey;
 use App\Http\Controllers\Api\DomaineController;
 use App\Http\Controllers\Api\UserController;
-use App\Models\Extrauser;
+use App\Http\Controllers\Api\ExtrauserController;
 
 Route::group([
     'middleware' => [
@@ -27,6 +27,6 @@ Route::group([
         Route::post('/logout', [AuthController::class, 'logout'])->name('users.logout');
 
         Route::get('/getUser', [UserController::class, 'getUser'])->name('users.get');
-        Route::post('/extrauser', [Extrauser::class, 'store'])->name('users.extra.store');
+        Route::post('/extrauser', [ExtrauserController::class, 'store'])->name('users.extra.store');
     });
 });
