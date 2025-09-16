@@ -20,6 +20,7 @@ class ExtrauserController extends Controller
             'niveauEtudesouhaite' => 'nullable|string|max:255',
             'document' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
             'photo' => 'nullable|image|max:5120',
+            'pays' => 'required|array',
         ]);
 
         if ($validator->fails()) {
