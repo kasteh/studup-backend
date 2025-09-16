@@ -16,25 +16,29 @@ class FrontendCors
             'https://studup.vercel.app',
         ];
 
-        // Répondre aux pré-vols OPTIONS
-        if ($request->isMethod('OPTIONS')) {
-            return response('', 204)
-                ->header('Access-Control-Allow-Origin', $origin)
-                ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-                ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key')
-                ->header('Access-Control-Allow-Credentials', 'true');
+        if ($origin && in_array($origin, $allowedOrigins)) {
+            $headers = [
+                'Access-Control-Allow-Origin'      => $origin,
+                'Access-Control-Allow-Methods'     => 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers'     => 'Content-Type, Authorization, X-Requested-With, X-API-KEY, Accept',
+                'Access-Control-Allow-Credentials' => 'true',
+            ];
+
+            // Si c’est une préflight request (OPTIONS), on répond direct
+            if ($request->getMethod() === 'OPTIONS') {
+                return response()->json('OK', 200, $headers);
+            }
+
+            // Sinon on ajoute les headers à la réponse normale
+            $response = $next($request);
+            foreach ($headers as $key => $value) {
+                $response->headers->set($key, $value);
+            }
+
+            return $response;
         }
 
-        // Pour les autres requêtes, ajouter les headers CORS
-        $response = $next($request);
-
-        if (in_array($origin, $allowedOrigins)) {
-            $response->headers->set('Access-Control-Allow-Origin', $origin);
-            $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-            $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key');
-            $response->headers->set('Access-Control-Allow-Credentials', 'true');
-        }
-
-        return $response;
+        // Si l’origine n’est pas autorisée, on continue sans ajouter CORS
+        return $next($request);
     }
 }
