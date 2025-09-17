@@ -17,6 +17,7 @@ class Extrauser extends Model
         'niveauEtudesouhaite',
         'document_url',
         'photo_url',
+        'pays',
     ];
 
     protected $casts = [
