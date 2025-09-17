@@ -21,6 +21,9 @@ class ExtrauserController extends Controller
             'document' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
             'photo' => 'nullable|image|max:5120',
             'pays' => 'required|array',
+            'period' => 'required|string',
+            'langue' => 'required|array',
+            'niveauLangue' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -49,6 +52,9 @@ class ExtrauserController extends Controller
                 'disciplineEtude' => $data['disciplineEtude'] ?? null,
                 'niveauEtudesouhaite' => $data['niveauEtudesouhaite'] ?? null,
                 'pays' => $data['pays'] ?? null,
+                'period' => $data['period'] ?? null,
+                'langue' => $data['langue'] ?? null,
+                'niveauLangue' => $data['niveauLangue'] ?? null,
                 'document_url' => $documentUrl ? Storage::url($documentUrl) : null,
                 'photo_url' => $photoUrl ? Storage::url($photoUrl) : null,
             ]

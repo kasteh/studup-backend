@@ -18,12 +18,16 @@ class Extrauser extends Model
         'document_url',
         'photo_url',
         'pays',
+        'period',
+        'langue',
+        'niveauLangue',
     ];
 
     protected $casts = [
         'domaineEtude'          => 'array',
         'disciplineEtude'       => 'array',
         'pays'                  => 'array',
+        'langue'                => 'array',
     ];
 
     public function user()
