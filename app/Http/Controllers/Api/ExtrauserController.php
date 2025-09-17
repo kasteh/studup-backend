@@ -48,7 +48,7 @@ class ExtrauserController extends Controller
                 'domaineEtude' => $data['domaineEtude'] ?? null,
                 'disciplineEtude' => $data['disciplineEtude'] ?? null,
                 'niveauEtudesouhaite' => $data['niveauEtudesouhaite'] ?? null,
-                'pays' => $data['pays'],
+                'pays' => $data['pays'] ?? null,
                 'document_url' => $documentUrl ? Storage::url($documentUrl) : null,
                 'photo_url' => $photoUrl ? Storage::url($photoUrl) : null,
             ]

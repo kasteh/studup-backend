@@ -20,8 +20,9 @@ class Extrauser extends Model
     ];
 
     protected $casts = [
-        'domaineEtude' => 'array',
-        'disciplineEtude' => 'array',
+        'domaineEtude'          => 'array',
+        'disciplineEtude'       => 'array',
+        'pays'                  => 'array',
     ];
 
     public function user()
